@@ -5,17 +5,18 @@ from datetime import datetime, timedelta
 import json
 import random
 from supabase import create_client, Client
+from dotenv import load_dotenv
 import os
 import glob
+from pathlib import Path
+import os, smtplib, ssl
+from email.message import EmailMessage
 
-# Try to load environment variables from a .env file if python-dotenv is installed
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    print("🔒 Loaded environment from .env (if present)")
-except Exception:
-    # dotenv not installed or no .env file; continue
-    pass
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
+
+load_dotenv(dotenv_path=ENV_PATH, override=True)
+
 
 
 def _load_google_credentials_from_local_file():
@@ -3030,6 +3031,131 @@ def complete_profile_page():
     """Route untuk halaman complete profile"""
     return redirect('/')  # Dash akan handle rendering
 
+# Halaman verifikasi OTP dan callback
+def verify_otp_layout():
+    return html.Div([
+        html.Div([
+            html.H1(
+                "📧 Verifikasi Email",
+                style={'textAlign': 'center', 'color': COLORS['primary']}
+            ),
+            html.P(
+                "Masukkan kode verifikasi yang dikirim ke email Anda.",
+                style={'textAlign': 'center', 'color': COLORS['gray_600']}
+            ),
+            html.Div([
+                html.Label("Kode OTP", className="form-label"),
+                dcc.Input(
+                    id='input-otp',
+                    type='text',
+                    placeholder='Masukkan kode 6 digit...',
+                    className='form-input'
+                )
+            ], className='form-group'),
+
+            html.Div([
+                html.Button(
+                    '✅ Verifikasi',
+                    id='btn-verify-otp',
+                    className='btn btn-primary',
+                    style={'width': '48%', 'marginRight': '4%'}
+                ),
+                html.Button(
+                    '🔁 Kirim Ulang',
+                    id='btn-resend-otp',
+                    className='btn btn-secondary',
+                    style={'width': '48%'}
+                ),
+            ], style={'display': 'flex', 'gap': '8px'}),
+
+            html.Div(id='verify-alert', style={'marginTop': '20px'})
+        ], style={
+            'padding': '40px',
+            'maxWidth': '480px',
+            'margin': '80px auto',
+            'backgroundColor': 'white',
+            'borderRadius': '12px',
+            'boxShadow': '0 10px 25px rgba(0,0,0,0.08)'
+        })
+    ], style={
+        'backgroundColor': COLORS['gray_50'],
+        'minHeight': '100vh',
+        'padding': '20px'
+    })
+
+
+
+@app.callback(
+    [Output('verify-alert', 'children'), Output('input-otp', 'value')],
+    [Input('btn-verify-otp', 'n_clicks'), Input('btn-resend-otp', 'n_clicks')],
+    [State('input-otp', 'value')],
+    prevent_initial_call=True
+)
+def handle_verify_otp(n_verify, n_resend, otp_value):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return dash.no_update, dash.no_update
+
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    pending = None
+    try:
+        pending = session.get('pending_verification')
+    except Exception:
+        pending = None
+
+    if not pending:
+        return create_alert('Tidak ada permintaan verifikasi yang sedang berjalan.', 'error'), ''
+
+    # Resend OTP
+    if button_id == 'btn-resend-otp' and n_resend:
+        otp_code = str(random.randint(100000, 999999))
+        expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+        try:
+            session['pending_verification']['otp'] = otp_code
+            session['pending_verification']['expires_at'] = expires_at
+        except Exception as e:
+            print(f"Failed to update session for resend: {e}")
+
+        sent = send_otp_email(pending.get('email'), otp_code)
+        if sent:
+            return create_alert('Kode OTP telah dikirim ulang ke email Anda.', 'success'), ''
+        else:
+            return create_alert('(Catatan: SMTP tidak dikonfigurasi - OTP dicetak di konsol).', 'info'), ''
+
+    # Verify OTP
+    if button_id == 'btn-verify-otp' and n_verify:
+        if not otp_value:
+            return create_alert('Masukkan kode OTP.', 'error'), ''
+
+        # Check expiry
+        try:
+            expires_at = datetime.fromisoformat(pending.get('expires_at'))
+            if datetime.now() > expires_at:
+                return create_alert('Kode OTP kedaluwarsa. Silakan kirim ulang.', 'error'), ''
+        except Exception:
+            pass
+
+        if str(pending.get('otp')) == str(otp_value).strip():
+            # Try to update DB flag
+            try:
+                user_id = pending.get('user_id')
+                if user_id and supabase_client:
+                    supabase_client.table('users').update({'otp_verified': True}).eq('id', user_id).execute()
+            except Exception as e:
+                print(f"Failed to update user verification: {e}")
+
+            try:
+                session.pop('pending_verification', None)
+            except Exception:
+                pass
+
+            return html.Div([html.P('✅ Verifikasi berhasil! Silakan login.', style={'color': COLORS['success']}), dcc.Location(href='/login', id='redirect-after-verify', refresh=True)]), ''
+        else:
+            return create_alert('Kode OTP salah. Coba lagi.', 'error'), ''
+
+    return dash.no_update, dash.no_update
+
 # Layout utama
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -3078,9 +3204,14 @@ def display_page(pathname):
         else:
             return top_nav, login_layout(), None
     
-    # Always allow access to login/signup pages
-    if pathname in ['/login', '/signup']:
-        return top_nav, login_layout() if pathname == '/login' else signup_layout(), None
+    # Always allow access to login/signup/verification pages
+    if pathname in ['/login', '/signup', '/verify-otp']:
+        if pathname == '/login':
+            return top_nav, login_layout(), None
+        elif pathname == '/signup':
+            return top_nav, signup_layout(), None
+        else:
+            return top_nav, verify_otp_layout(), None
     
     # Redirect to login if not authenticated
     if not is_authenticated:
@@ -3225,10 +3356,51 @@ def handle_signup(n_signup, n_google, username, email, password, confirm_passwor
         user, message = create_user(username, email, password)
         
         if user:
-            # Jangan auto-login setelah pendaftaran — minta user untuk login manual
+            # Buat OTP dan simpan ke session untuk verifikasi
+            otp_code = str(random.randint(100000, 999999))
+            expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+            try:
+                session['pending_verification'] = {
+                    'user_id': user.get('id'),
+                    'email': user.get('email'),
+                    'username': user.get('username'),
+                    'otp': otp_code,
+                    'expires_at': expires_at
+                }
+                session.permanent = True
+            except Exception as e:
+                print(f"Failed to save pending verification in session: {e}")
+
+            # Kirim email OTP (fungsi send_otp_email ada di file ini)
+            sent = send_otp_email(user.get('email'), otp_code)
+
+            # Simpan OTP ke Supabase pada kolom users. Jika kolom tidak ada, ignore.
+            try:
+                uid = user.get('id')
+                if uid and supabase_client:
+                    upd = {}
+                    upd['otp'] = int(otp_code)
+                    upd['otp_expires_at'] = expires_at
+                    upd['otp_verified'] = False
+                    try:
+                        supabase_client.table('users').update(upd).eq('id', uid).execute()
+                    except Exception as e:
+                        # jika kolom tidak ada, coba hanya simpan otp
+                        try:
+                            supabase_client.table('users').update({'otp': otp_code}).eq('id', uid).execute()
+                        except Exception:
+                            print(f"[OTP] Warning: failed to save OTP to users table: {e}")
+            except Exception as e:
+                print(f"[OTP] Warning saving OTP to DB: {e}")
+
+            info_msg = "Kode verifikasi telah dikirim ke email Anda. Periksa inbox (atau folder spam)."
+            if not sent:
+                info_msg = "(Catatan: SMTP tidak dikonfigurasi. OTP dicetak ke konsol saat pengembangan.)"
+
+            # Redirect ke halaman verifikasi OTP
             return html.Div([
-                html.P("✅ Pendaftaran berhasil! Silakan login menggunakan akun Anda.", style={'color': COLORS['success']}),
-                dcc.Location(href='/login', id='redirect-after-signup', refresh=True)
+                html.P(f"✅ Pendaftaran berhasil! {info_msg}", style={'color': COLORS['success']}),
+                dcc.Location(href='/verify-otp', id='redirect-verify-otp', refresh=True)
             ], style={'textAlign': 'center'}), "", "", "", ""
         else:
             return create_alert(message, "error"), dash.no_update, dash.no_update, "", ""
@@ -3259,6 +3431,89 @@ def create_alert(message, alert_type):
             'border': f"1px solid {colors.get(alert_type, COLORS['gray_300'])}"
         })
     ])
+
+
+def send_otp_email(to_email: str, otp_code: str) -> bool:
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    sender_name = os.getenv("SMTP_SENDER_NAME", "SIBAL")
+
+    print("[SMTP DEBUG] host:", smtp_host, "port:", smtp_port, "user:", smtp_user)
+
+    if not smtp_user or not smtp_pass:
+        print("[OTP] SMTP not configured")
+        return False
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "SIBAL - Kode Verifikasi (OTP)"
+        msg["From"] = f"{sender_name} <{smtp_user}>"
+        msg["To"] = to_email
+        msg.set_content(
+            f"Halo,\n\nKode OTP kamu: {otp_code}\n"
+            f"Berlaku 10 menit.\n\nSalam,\n{sender_name}"
+        )
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+
+        print(f"✅ Sent OTP to {to_email}")
+        return True
+
+    except Exception as e:
+        print("❌ Failed to send OTP email:", repr(e))
+        return False
+otp_code = str(random.randint(100000, 999999))
+expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+
+def handle_signup(n_clicks, username, email, password, confirm_password):
+    if not n_clicks:
+        return dash.no_update
+
+    # 1) Insert user dulu
+    insert_res = supabase_client.table("users").insert({
+        "email": email,
+        "username": username,
+        "name": username,
+        "password_hash": hash_password(password),
+        "auth_provider": "local"
+    }).execute()
+
+    user_id = insert_res.data[0]["id"]
+
+    # 2) Generate OTP
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = (datetime.now() + timedelta(minutes=10)).isoformat()
+
+    # 3) Simpan OTP ke user itu
+    supabase_client.table("users").update({
+        "otp": int(otp_code),
+        "otp_verified": False,
+        "otp_expires_at": expires_at
+    }).eq("id", user_id).execute()
+
+    # 4) Kirim OTP ke Gmail user
+    sent = send_otp_email(email, otp_code)
+
+    if sent:
+        session["pending_verification"] = {
+            "email": email,
+            "otp": otp_code,
+            "expires_at": expires_at,
+            "user_id": user_id
+        }
+        return create_alert("OTP sudah dikirim ke email kamu. Cek inbox/spam.", "success")
+    else:
+        return create_alert("Gagal kirim OTP. Periksa konfigurasi SMTP.", "error")
+
+
 
 @app.callback(
     Output('pemasukan-jumlah-display', 'children'),
