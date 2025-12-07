@@ -11,6 +11,7 @@ import glob
 from pathlib import Path
 import os, smtplib, ssl
 from email.message import EmailMessage
+import re
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
@@ -75,6 +76,76 @@ server.config['PERMANENT_SESSION_LIFETIME'] = _td(days=7)
 supabase_url = "https://shltrwcweexbdcuogscs.supabase.co"
 supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNobHRyd2N3ZWV4YmRjdW9nc2NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNjk4MjUsImV4cCI6MjA3OTY0NTgyNX0.tVwzjiqORJ0dAZhW_f0PneVqJyummvmPOi-WFC5Wd1I"
 supabase_client = create_client(supabase_url, supabase_key)
+
+
+def delete_old_transactions(table_name: str, older_than_days: int | None = None) -> dict:
+    """Delete historical rows from a Supabase table.
+
+    - If `older_than_days` is an int, delete rows where `tanggal` < (today - days).
+    - If `older_than_days` is None, delete ALL rows in the table (best-effort).
+
+    Returns a dict with result information.
+    """
+    try:
+        if older_than_days is None:
+            # Best-effort: fetch ids then delete by ids to avoid delete-without-filter issues
+            resp = supabase_client.table(table_name).select('id').execute()
+            ids = [r.get('id') for r in (resp.data or []) if r.get('id') is not None]
+            if not ids:
+                return {'deleted': 0, 'ids_deleted': []}
+            del_resp = supabase_client.table(table_name).delete().in_('id', ids).execute()
+            return {'deleted': len(ids), 'ids_deleted': ids, 'raw': del_resp}
+        else:
+            cutoff = (datetime.now().date() - timedelta(days=older_than_days)).isoformat()
+            # Try deleting by tanggal < cutoff
+            del_resp = supabase_client.table(table_name).delete().lt('tanggal', cutoff).execute()
+            # supabase returns deleted rows in del_resp.data when succesful
+            deleted = len(del_resp.data) if getattr(del_resp, 'data', None) else 0
+            return {'deleted': deleted, 'cutoff': cutoff, 'raw': del_resp}
+    except Exception as e:
+        print(f"[CLEANUP] Error deleting from {table_name}: {e}")
+        return {'error': str(e)}
+
+
+@server.route('/admin/cleanup-transactions')
+def admin_cleanup_transactions():
+    """HTTP helper to cleanup transactions.
+
+    Query params:
+      - table: 'pemasukan'|'pengeluaran'|'both' (default: both)
+      - days: integer number of days to keep (delete older than days), or 'all' to delete everything
+
+    Example: /admin/cleanup-transactions?table=both&days=365
+    """
+    try:
+        table_param = request.args.get('table', 'both')
+        days_param = request.args.get('days', None)
+
+        if days_param is None:
+            return ("Usage: provide ?table={pemasukan|pengeluaran|both}&days={N|all}", 400)
+
+        if days_param == 'all':
+            days = None
+        else:
+            try:
+                days = int(days_param)
+            except Exception:
+                return ("Invalid days parameter", 400)
+
+        results = {}
+        targets = []
+        if table_param in ('pemasukan', 'both'):
+            targets.append('transaksi_pemasukan')
+        if table_param in ('pengeluaran', 'both'):
+            targets.append('transaksi_pengeluaran')
+
+        for t in targets:
+            results[t] = delete_old_transactions(t, days)
+
+        return results
+    except Exception as e:
+        return {'error': str(e)}
+
 
 # ===== SIMPLE AUTH SYSTEM =====
 import requests
@@ -1403,17 +1474,34 @@ class SIBALData:
         if not self.client:
             print(f"❌ Client not available for insert to {table_name}")
             return None
-        try:
-            response = self.client.table(table_name).insert(data).execute()
-            if response.data:
-                print(f"✅ Inserted data to {table_name}")
-                return response.data[0]
-            else:
-                print(f"❌ No data returned from insert to {table_name}")
+        # Make a shallow copy so we can mutate for retry attempts
+        payload = dict(data)
+        attempts = 0
+        while attempts < 3:
+            attempts += 1
+            try:
+                response = self.client.table(table_name).insert(payload).execute()
+                if response.data:
+                    print(f"✅ Inserted data to {table_name}")
+                    return response.data[0]
+                else:
+                    print(f"❌ No data returned from insert to {table_name}")
+                    return None
+            except Exception as e:
+                err = str(e)
+                print(f"⚠️ Insert attempt {attempts} failed for {table_name}: {err}")
+                # Handle PostgREST schema cache error where a column is missing
+                # message example: "Could not find the 'user_id' column of 'transaksi_pemasukan' in the schema cache"
+                m = re.search(r"Could not find the '([a-zA-Z0-9_]+)' column", err)
+                if m:
+                    missing_col = m.group(1)
+                    if missing_col in payload:
+                        print(f"ℹ️ Removing unknown column '{missing_col}' and retrying insert to {table_name}")
+                        payload.pop(missing_col, None)
+                        continue
+                # If not a schema-missing issue or column not in payload, stop retrying
+                print(f"❌ Error inserting to {table_name}: {err}")
                 return None
-        except Exception as e:
-            print(f"❌ Error inserting to {table_name}: {e}")
-            return None
     
     def load_all_data(self):
         """Memuat semua data dari Supabase"""
@@ -2039,7 +2127,7 @@ def create_laporan_sub_nav():
             ], href="/jurnal-penyesuaian", className="sub-nav-link"),
             dcc.Link([
                 html.I(className="fas fa-chart-line"),
-                " Neraca Setelah Penyesuaian"
+                " Laporan Posisi Keuangan"
             ], href="/neraca-setelah-penyesuaian", className="sub-nav-link"),
             dcc.Link([
                 html.I(className="fas fa-money-bill-wave"),
@@ -2188,16 +2276,6 @@ def transaksi_layout():
                         )
                     ], className="form-group"),
 
-                    html.Div([
-                        html.Label("Quantity", className="form-label"),
-                        dcc.Input(
-                            id='pemasukan-qty',
-                            type='number',
-                            placeholder='0',
-                            min=0,
-                            className="form-input"
-                        )
-                    ], className="form-group"),
 
                     html.Div([
                         html.Label("Quantity (kg) - untuk penjualan ikan", className="form-label"),
@@ -2219,6 +2297,7 @@ def transaksi_layout():
                             className="form-input"
                         )
                     ], className="form-group"),
+
                     html.Div([
                         html.Label("Keterangan Transaksi", className="form-label"),
                         dcc.Input(
@@ -2308,16 +2387,6 @@ def transaksi_layout():
                         )
                     ], className="form-group"),
 
-                    html.Div([
-                        html.Label("Quantity", className="form-label"),
-                        dcc.Input(
-                            id='pengeluaran-qty',
-                            type='number',
-                            placeholder='0',
-                            min=1,
-                            className="form-input"
-                        )
-                    ], className="form-group"),
                     html.Div([
                         html.Label("Quantity (kg) - hanya untuk pembelian persediaan", className="form-label"),
                         dcc.Input(
@@ -2559,7 +2628,7 @@ def neraca_setelah_penyesuaian_layout():
                 html.Div([
                     html.I(className="fas fa-chart-line")
                 ], className="card-icon"),
-                html.H1("Neraca Setelah Penyesuaian", className="card-title")
+                html.H1("Laporan posisi keuangan", className="card-title")
             ], className="card-header"),
             html.Div([
                 html.Div([
@@ -2572,7 +2641,7 @@ def neraca_setelah_penyesuaian_layout():
                     )
                 ], className="form-group"),
                 html.Button(
-                    "📊 Generate Neraca Setelah Penyesuaian",
+                    "📊 Generate Laporan Posisi Keuangan",
                     id='btn-generate-neraca-penyesuaian',
                     className="btn btn-primary"
                 ),
@@ -3816,10 +3885,24 @@ def hapus_pemasukan(n_clicks, tanggal, checklists):
     if n_clicks and n_clicks > 0:
         transaksi_hari_ini = [t for t in sibal_data.transaksi_pemasukan if t['tanggal'] == tanggal]
         indices_to_delete = []
-        
+        # Each checklist returns a list of selected values. We encode option values as
+        # 'id:<db_id>' when item has been saved to DB, or 'idx:<index>' for in-memory items.
         for i, checked in enumerate(checklists):
-            if checked and 'selected' in checked and i < len(transaksi_hari_ini):
-                indices_to_delete.append(i)
+            if checked:
+                val = checked[0]
+                if isinstance(val, str) and val.startswith('id:'):
+                    tid = val.split(':', 1)[1]
+                    for idx_t, t in enumerate(transaksi_hari_ini):
+                        if str(t.get('id')) == str(tid):
+                            indices_to_delete.append(idx_t)
+                            break
+                elif isinstance(val, str) and val.startswith('idx:'):
+                    try:
+                        idx_val = int(val.split(':', 1)[1])
+                        if idx_val < len(transaksi_hari_ini):
+                            indices_to_delete.append(idx_val)
+                    except Exception:
+                        pass
         
         if indices_to_delete:
             # Hapus dari belakang untuk menghindari index error
@@ -3827,9 +3910,16 @@ def hapus_pemasukan(n_clicks, tanggal, checklists):
             for i in sorted(indices_to_delete, reverse=True):
                 if i < len(transaksi_hari_ini):
                     transaksi_to_delete = transaksi_hari_ini[i]
+                    # If saved to DB, attempt DB delete
+                    try:
+                        if 'id' in transaksi_to_delete and transaksi_to_delete.get('id') and supabase_client:
+                            supabase_client.table('transaksi_pemasukan').delete().eq('id', transaksi_to_delete.get('id')).execute()
+                    except Exception as e:
+                        print(f"[DELETE] Failed to delete pemasukan id {transaksi_to_delete.get('id')}: {e}")
+
                     sibal_data.transaksi_pemasukan.remove(transaksi_to_delete)
                     deleted_count += 1
-            
+
             sibal_data.save_all_data()
             return update_daftar_transaksi(tanggal, None, None, None, None)[0]
         
@@ -3846,10 +3936,23 @@ def hapus_pengeluaran(n_clicks, tanggal, checklists):
     if n_clicks and n_clicks > 0:
         transaksi_hari_ini = [t for t in sibal_data.transaksi_pengeluaran if t['tanggal'] == tanggal]
         indices_to_delete = []
-        
+        # Parse checklist selected values encoded as 'id:<id>' or 'idx:<index>'
         for i, checked in enumerate(checklists):
-            if checked and 'selected' in checked and i < len(transaksi_hari_ini):
-                indices_to_delete.append(i)
+            if checked:
+                val = checked[0]
+                if isinstance(val, str) and val.startswith('id:'):
+                    tid = val.split(':', 1)[1]
+                    for idx_t, t in enumerate(transaksi_hari_ini):
+                        if str(t.get('id')) == str(tid):
+                            indices_to_delete.append(idx_t)
+                            break
+                elif isinstance(val, str) and val.startswith('idx:'):
+                    try:
+                        idx_val = int(val.split(':', 1)[1])
+                        if idx_val < len(transaksi_hari_ini):
+                            indices_to_delete.append(idx_val)
+                    except Exception:
+                        pass
         
         if indices_to_delete:
             # Hapus dari belakang untuk menghindari index error
@@ -3857,9 +3960,16 @@ def hapus_pengeluaran(n_clicks, tanggal, checklists):
             for i in sorted(indices_to_delete, reverse=True):
                 if i < len(transaksi_hari_ini):
                     transaksi_to_delete = transaksi_hari_ini[i]
+                    # If saved to DB, attempt DB delete
+                    try:
+                        if 'id' in transaksi_to_delete and transaksi_to_delete.get('id') and supabase_client:
+                            supabase_client.table('transaksi_pengeluaran').delete().eq('id', transaksi_to_delete.get('id')).execute()
+                    except Exception as e:
+                        print(f"[DELETE] Failed to delete pengeluaran id {transaksi_to_delete.get('id')}: {e}")
+
                     sibal_data.transaksi_pengeluaran.remove(transaksi_to_delete)
                     deleted_count += 1
-            
+
             sibal_data.save_all_data()
             return update_daftar_transaksi(tanggal, None, None, None, None)[1]
     
@@ -3887,10 +3997,16 @@ def update_daftar_transaksi(tanggal, n_pemasukan, n_pengeluaran, n_hapus_pemasuk
             quantity = trans.get('quantity', 0)
             jumlah = trans.get('jumlah', 0)
             
+            # encode option value to indicate DB id or index
+            if trans.get('id'):
+                opt_value = f"id:{trans.get('id')}"
+            else:
+                opt_value = f"idx:{i}"
+
             items_pemasukan.append(html.Div([
                 dcc.Checklist(
                     id={'type': 'pemasukan-check', 'index': i},
-                    options=[{'label': '', 'value': 'selected'}],
+                    options=[{'label': '', 'value': opt_value}],
                     value=[],
                     style={'display': 'inline-block', 'marginRight': '10px'}
                 ),
@@ -3917,10 +4033,16 @@ def update_daftar_transaksi(tanggal, n_pemasukan, n_pengeluaran, n_hapus_pemasuk
             jenis_label = trans['jenis'].replace('_', ' ').title()
             metode = trans.get('metode_bayar', 'tunai')
             
+            # encode option value to indicate DB id or index
+            if trans.get('id'):
+                opt_value = f"id:{trans.get('id')}"
+            else:
+                opt_value = f"idx:{i}"
+
             items_pengeluaran.append(html.Div([
                 dcc.Checklist(
                     id={'type': 'pengeluaran-check', 'index': i},
-                    options=[{'label': '', 'value': 'selected'}],
+                    options=[{'label': '', 'value': opt_value}],
                     value=[],
                     style={'display': 'inline-block', 'marginRight': '10px'}
                 ),
@@ -5366,7 +5488,7 @@ def generate_neraca_setelah_penyesuaian(n_clicks, tanggal):
         
         # Buat tabel neraca
         return html.Div([
-            html.H4(f"Neraca Setelah Penyesuaian per {tanggal}", 
+                 html.H4(f"Laporan Posisi Keuangan per {tanggal}", 
                    style={'textAlign': 'center', 'marginBottom': '30px', 'color': COLORS['primary']}),
             
             html.Div([
@@ -5420,7 +5542,7 @@ def generate_neraca_setelah_penyesuaian(n_clicks, tanggal):
             ])
         ])
     
-    return html.P("Klik 'Generate Neraca Setelah Penyesuaian' untuk melihat neraca", style={'color': '#6c757d'})
+    return html.P("Klik 'Generate Laporan Posisi Keuangan' untuk melihat neraca", style={'color': '#6c757d'})
 
 @app.callback(
     Output('tabel-laba-rugi', 'children'),
