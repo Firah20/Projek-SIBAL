@@ -1,0 +1,49 @@
+/* Strong overrides for datepicker popovers to avoid clipping */
+.SingleDatePicker_picker,
+.DateRangePicker_picker,
+.DateInput_picker,
+.DateInput__picker,
+.react-datepicker,
+.rdp,
+.rdp__picker,
+.DayPicker {
+    position: fixed !important;
+    z-index: 2147483647 !important;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12) !important;
+    pointer-events: auto !important;
+    transform: none !important;
+}
+
+/* Wider inputs so date text won't wrap/cut */
+.DateInput_input,
+.DateInput {
+    min-width: 120px !important;
+    max-width: 320px !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure popover children allow clicks */
+.SingleDatePicker_picker *,
+.DateInput_picker * {
+    pointer-events: auto !important;
+}
+
+/* Some datepicker implementations use portals with these classes */
+.react-datepicker-popper,
+.react-datepicker__triangle {
+    z-index: 2147483647 !important;
+}
+
+/* (Removed aggressive select rules) */
+/* Keep only lightweight datepicker z-index override to avoid clipping in simple cases. */
+.SingleDatePicker_picker,
+.DateRangePicker_picker,
+.DateInput_picker,
+.DateInput__picker,
+.react-datepicker,
+.rdp,
+.rdp__picker,
+.DayPicker {
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+}

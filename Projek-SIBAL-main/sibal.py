@@ -337,6 +337,7 @@ KODE_AKUN = {
     'utang': {'kode': '2-110', 'nama': 'Utang Dagang'},
     'utang_gaji': {'kode': '2-120', 'nama': 'Utang Gaji'},
     'modal': {'kode': '3-110', 'nama': 'Modal'},
+    'ikhtisar_laba_rugi': {'kode': '3-120', 'nama': 'Ikhtisar Laba Rugi'},
     'pendapatan': {'kode': '4-110', 'nama': 'Penjualan'},
     'pendapatan_tiket': {'kode': '4-120', 'nama': 'Pendapatan Tiket'},
     'hpp': {'kode': '5-110', 'nama': 'Harga Pokok Produksi'},
@@ -1438,6 +1439,7 @@ class SIBALData:
             {'label': f"{KODE_AKUN['perlengkapan']['kode']} - {KODE_AKUN['perlengkapan']['nama']}", 'value': 'perlengkapan'},
             {'label': f"{KODE_AKUN['utang']['kode']} - {KODE_AKUN['utang']['nama']}", 'value': 'utang'},
             {'label': f"{KODE_AKUN['modal']['kode']} - {KODE_AKUN['modal']['nama']}", 'value': 'modal'},
+            {'label': f"{KODE_AKUN['ikhtisar_laba_rugi']['kode']} - {KODE_AKUN['ikhtisar_laba_rugi']['nama']}", 'value': 'ikhtisar_laba_rugi'},
             {'label': f"{KODE_AKUN['pendapatan']['kode']} - {KODE_AKUN['pendapatan']['nama']}", 'value': 'pendapatan'},
             {'label': f"{KODE_AKUN['pendapatan_tiket']['kode']} - {KODE_AKUN['pendapatan_tiket']['nama']}", 'value': 'pendapatan_tiket'},
             {'label': f"{KODE_AKUN['hpp']['kode']} - {KODE_AKUN['hpp']['nama']}", 'value': 'hpp'},
@@ -2126,9 +2128,21 @@ def create_laporan_sub_nav():
                 " Jurnal Penyesuaian"
             ], href="/jurnal-penyesuaian", className="sub-nav-link"),
             dcc.Link([
+                html.I(className="fas fa-balance-scale"),
+                " Neraca Saldo Setelah Penyesuaian"
+            ], href="/neraca-saldo-penyesuaian", className="sub-nav-link"),
+            dcc.Link([
                 html.I(className="fas fa-chart-line"),
                 " Laporan Posisi Keuangan"
             ], href="/neraca-setelah-penyesuaian", className="sub-nav-link"),
+            dcc.Link([
+                html.I(className="fas fa-clipboard-list"),
+                " Jurnal Penutup"
+            ], href="/jurnal-penutup", className="sub-nav-link"),
+            dcc.Link([
+                html.I(className="fas fa-file-invoice"),
+                " Neraca Setelah Penutupan"
+            ], href="/neraca-setelah-penutupan", className="sub-nav-link"),
             dcc.Link([
                 html.I(className="fas fa-money-bill-wave"),
                 " Laporan Laba Rugi"
@@ -2649,6 +2663,60 @@ def neraca_setelah_penyesuaian_layout():
             ], className="card-content")
         ], className="glass-card")
     ], className="main-container")
+
+def neraca_saldo_penyesuaian_layout():
+    return html.Div([
+        html.Div([
+            html.Div([
+                html.Div([html.I(className='fas fa-balance-scale')], className='card-icon'),
+                html.H1('Neraca Saldo Setelah Penyesuaian', className='card-title')
+            ], className='card-header'),
+            html.Div([
+                html.Div([html.Label('Pilih Tanggal Neraca:', className='form-label'),
+                          dcc.DatePickerSingle(id='tanggal-neraca-saldo-penyesuaian', date=datetime.now().date(), display_format='YYYY-MM-DD', className='form-control')], className='form-group'),
+                html.Div([html.Button('📊 Generate Neraca Saldo Setelah Penyesuaian', id='btn-generate-neraca-saldo-penyesuaian', className='btn btn-primary'), html.Button('💾 Simpan', id='btn-save-neraca-saldo-penyesuaian', className='btn btn-secondary', style={'marginLeft':'10px'})], style={'marginBottom':'12px'}),
+                html.Div(id='tabel-neraca-saldo-penyesuaian', className='table-container'),
+                html.Div(id='save-neraca-saldo-penyesuaian-status', style={'marginTop':'12px'})
+            ], className='card-content')
+        ], className='glass-card')
+    ], className='main-container')
+
+def jurnal_penutup_layout():
+    return html.Div([
+        html.Div([
+            html.Div([
+                html.Div([html.I(className="fas fa-clipboard-list")], className="card-icon"),
+                html.H1("Jurnal Penutup", className="card-title")
+            ], className="card-header"),
+            html.Div([
+                html.Div([
+                    html.Label("Tanggal Jurnal Penutup", className="form-label"),
+                    dcc.DatePickerSingle(
+                        id='tanggal-jurnal-penutup',
+                        date=datetime.now().date(),
+                        display_format='YYYY-MM-DD',
+                        className='form-control'
+                    )
+                ], className='form-group'),
+                html.Button("📌 Generate Jurnal Penutup", id='btn-generate-jurnal-penutup', className='btn btn-primary'),
+                html.Div(id='tabel-jurnal-penutup', className='table-container')
+            ], className='card-content')
+        ], className='glass-card')
+    ], className='main-container')
+
+def neraca_setelah_penutupan_layout():
+    return html.Div([
+        html.Div([
+            html.Div([html.Div([html.I(className='fas fa-file-invoice')], className='card-icon'), html.H1('Neraca Setelah Penutupan', className='card-title')], className='card-header'),
+            html.Div([
+                html.Div([html.Label('Pilih Tanggal Neraca Setelah Penutupan:', className='form-label'),
+                          dcc.DatePickerSingle(id='tanggal-neraca-penutupan', date=datetime.now().date(), display_format='YYYY-MM-DD', className='form-control')], className='form-group'),
+                html.Div([html.Button('📊 Generate Neraca Setelah Penutupan', id='btn-generate-neraca-penutupan', className='btn btn-primary'), html.Button('💾 Simpan ke Supabase', id='btn-save-neraca-penutupan', className='btn btn-secondary', style={'marginLeft':'10px'})], style={'marginBottom':'12px'}),
+                html.Div(id='tabel-neraca-penutupan', className='table-container'),
+                html.Div(id='save-neraca-penutupan-status', style={'marginTop':'12px'})
+            ], className='card-content')
+        ], className='glass-card')
+    ], className='main-container')
 
 def laporan_laba_rugi_layout():
     return html.Div([
@@ -3297,7 +3365,7 @@ def display_page(pathname):
     
     laporan_pages = [
         '/laporan-analisis', '/jurnal-penyesuaian', '/neraca-setelah-penyesuaian',
-        '/laporan-laba-rugi', '/laporan-keuangan'
+        '/laporan-laba-rugi', '/laporan-keuangan', '/jurnal-penutup', '/neraca-setelah-penutupan', '/neraca-saldo-penyesuaian'
     ]
     
     if pathname in akuntansi_pages:
@@ -3334,6 +3402,12 @@ def display_page(pathname):
         content = jurnal_penyesuaian_layout()
     elif pathname == '/neraca-setelah-penyesuaian':
         content = neraca_setelah_penyesuaian_layout()
+    elif pathname == '/jurnal-penutup':
+        content = jurnal_penutup_layout()
+    elif pathname == '/neraca-setelah-penutupan':
+        content = neraca_setelah_penutupan_layout()
+    elif pathname == '/neraca-saldo-penyesuaian':
+        content = neraca_saldo_penyesuaian_layout()
     elif pathname == '/laporan-laba-rugi':
         content = laporan_laba_rugi_layout()
     elif pathname == '/laporan-keuangan':
@@ -4105,7 +4179,15 @@ def update_persediaan_pembelian(kode_barang, qty, harga, tanggal, keterangan, su
         }
         
         entri_baru['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
-        sibal_data._all_kartu_persediaan.append(entri_baru)
+        # Cegah duplikasi entri yang persis sama untuk user yang sama
+        uid = entri_baru.get('user_id')
+        duplicate = False
+        for existing in sibal_data._all_kartu_persediaan:
+            if str(existing.get('user_id')) == str(uid) and existing.get('tanggal') == entri_baru['tanggal'] and existing.get('kode_barang') == entri_baru['kode_barang'] and existing.get('masuk_qty') == entri_baru['masuk_qty'] and existing.get('masuk_total') == entri_baru['masuk_total']:
+                duplicate = True
+                break
+        if not duplicate:
+            sibal_data._all_kartu_persediaan.append(entri_baru)
         print(f"✅ BERHASIL: {kode_barang} +{qty}kg, Saldo: {saldo_qty_baru}kg @ Rp{saldo_harga_baru:,.0f}")
         return True
         
@@ -4168,7 +4250,15 @@ def update_persediaan_penjualan(kode_barang, qty, tanggal, keterangan):
         }
         
         entri_baru['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
-        sibal_data._all_kartu_persediaan.append(entri_baru)
+        # Cegah duplikasi entri penjualan untuk user yang sama
+        uid = entri_baru.get('user_id')
+        duplicate = False
+        for existing in sibal_data._all_kartu_persediaan:
+            if str(existing.get('user_id')) == str(uid) and existing.get('tanggal') == entri_baru['tanggal'] and existing.get('kode_barang') == entri_baru['kode_barang'] and existing.get('keluar_qty') == entri_baru['keluar_qty'] and existing.get('keluar_total') == entri_baru['keluar_total']:
+                duplicate = True
+                break
+        if not duplicate:
+            sibal_data._all_kartu_persediaan.append(entri_baru)
         print(f"✅ BERHASIL: {kode_barang} -{qty}kg, HPP: Rp{hpp_total:,}, Saldo: {saldo_qty_baru}kg")
         return True, hpp_total
         
@@ -4192,8 +4282,13 @@ def hitung_ulang_semua_saldo():
     for kode_barang in transaksi_per_barang:
         transaksi_per_barang[kode_barang].sort(key=lambda x: x['tanggal'])
     
-    # Hapus semua data kartu persediaan
-    sibal_data.kartu_persediaan.clear()
+    # Hapus semua data kartu persediaan milik user aktif sebelum membangun ulang
+    uid = current_user.get_id() if current_user and current_user.get_id() else None
+    if uid:
+        sibal_data._all_kartu_persediaan = [e for e in sibal_data._all_kartu_persediaan if str(e.get('user_id')) != str(uid)]
+    else:
+        # jika tidak ada user aktif, kosongkan semua (development mode)
+        sibal_data._all_kartu_persediaan.clear()
     
     # Hitung ulang dari transaksi pertama
     for kode_barang, transaksi_list in transaksi_per_barang.items():
@@ -4617,6 +4712,206 @@ def akumulasi_pengeluaran_ke_jurnal(tanggal):
     
     return html.P("Belum ada transaksi pengeluaran untuk diakumulasi")
 
+
+def akumulasi_pemasukan_ke_jurnal(tanggal):
+    """Helper: akumulasi semua transaksi pemasukan pada tanggal menjadi jurnal umum.
+    Menghasilkan jurnal penjualan (pendapatan), jurnal HPP (jika ada penjualan ikan), tiket, modal, dll.
+    Fungsi ini tidak terikat ke callback Dash; bisa dipanggil oleh orchestrator.
+    """
+    jurnal_created = []
+    transaksi_pemasukan = [t for t in sibal_data.transaksi_pemasukan if t['tanggal'] == tanggal]
+
+    if not transaksi_pemasukan:
+        return jurnal_created
+
+    for trans in transaksi_pemasukan:
+        try:
+            if trans['jenis'] == 'tiket_masuk':
+                jurnal = {
+                    'tanggal': tanggal,
+                    'keterangan': f"{trans['keterangan']}",
+                    'ref': trans.get('ref', ''),
+                    'akun_debit': 'Kas',
+                    'kode_akun_debit': KODE_AKUN['kas']['kode'],
+                    'jumlah_debit': trans['jumlah'],
+                    'akun_kredit': 'Pendapatan Tiket',
+                    'kode_akun_kredit': KODE_AKUN['pendapatan_tiket']['kode'],
+                    'jumlah_kredit': trans['jumlah']
+                }
+                jurnal['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
+                sibal_data._all_jurnal_umum.append(jurnal)
+                jurnal_created.append(jurnal)
+
+            elif trans['jenis'] == 'penjualan_ikan':
+                # Jurnal penjualan
+                jurnal_penjualan = {
+                    'tanggal': tanggal,
+                    'keterangan': f"{trans['keterangan']}",
+                    'ref': trans.get('ref', ''),
+                    'akun_debit': 'Kas',
+                    'kode_akun_debit': KODE_AKUN['kas']['kode'],
+                    'jumlah_debit': trans['jumlah'],
+                    'akun_kredit': 'Penjualan',
+                    'kode_akun_kredit': KODE_AKUN['pendapatan']['kode'],
+                    'jumlah_kredit': trans['jumlah']
+                }
+                jurnal_penjualan['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
+                sibal_data._all_jurnal_umum.append(jurnal_penjualan)
+                jurnal_created.append(jurnal_penjualan)
+
+                # Jurnal HPP dan pengurangan persediaan
+                kode_barang = trans.get('kode_barang', 'IK001')
+                qty_terjual = trans.get('quantity', 0)
+
+                if qty_terjual > 0:
+                    success, total_hpp = update_persediaan_penjualan(kode_barang, qty_terjual, tanggal, trans['keterangan'])
+                    if success:
+                        jurnal_hpp = {
+                            'tanggal': tanggal,
+                            'keterangan': f"HPP - {trans['keterangan']}",
+                            'ref': trans.get('ref', '') + '-HPP',
+                            'akun_debit': 'Harga Pokok Produksi',
+                            'kode_akun_debit': KODE_AKUN['hpp']['kode'],
+                            'jumlah_debit': total_hpp,
+                            'akun_kredit': 'Persediaan Barang Dagang',
+                            'kode_akun_kredit': KODE_AKUN['persediaan']['kode'],
+                            'jumlah_kredit': total_hpp
+                        }
+                        jurnal_hpp['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
+                        sibal_data._all_jurnal_umum.append(jurnal_hpp)
+                        jurnal_created.append(jurnal_hpp)
+
+            elif trans['jenis'] == 'modal':
+                jurnal = {
+                    'tanggal': tanggal,
+                    'keterangan': f"{trans['keterangan']}",
+                    'ref': trans.get('ref', ''),
+                    'akun_debit': 'Kas',
+                    'kode_akun_debit': KODE_AKUN['kas']['kode'],
+                    'jumlah_debit': trans['jumlah'],
+                    'akun_kredit': 'Modal',
+                    'kode_akun_kredit': KODE_AKUN['modal']['kode'],
+                    'jumlah_kredit': trans['jumlah']
+                }
+                jurnal['user_id'] = current_user.get_id() if current_user and current_user.get_id() else None
+                sibal_data._all_jurnal_umum.append(jurnal)
+                jurnal_created.append(jurnal)
+
+        except Exception as e:
+            print(f"❌ Gagal memproses pemasukan {trans}: {e}")
+
+    # jangan lupa simpan
+    if jurnal_created:
+        sibal_data.save_all_data()
+
+    return jurnal_created
+
+
+def regenerate_buku_besar_all():
+    """Bangun buku besar (ledger) untuk semua akun dari jurnal yang ada.
+    Hasil disimpan di `sibal_data.buku_besar` sebagai dict: kode_akun -> list of entries with running saldo.
+    """
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    buku = {}
+
+    # Urutkan jurnal berdasarkan tanggal
+    semua_jurnal_sorted = sorted(semua_jurnal, key=lambda x: x.get('tanggal', ''))
+
+    for jurnal in semua_jurnal_sorted:
+        # Debit side
+        kode_debit = jurnal.get('kode_akun_debit')
+        if kode_debit:
+            if kode_debit not in buku:
+                buku[kode_debit] = []
+            prev_saldo = buku[kode_debit][-1]['saldo'] if buku[kode_debit] else 0
+            new_saldo = prev_saldo + jurnal.get('jumlah_debit', 0)
+            buku[kode_debit].append({
+                'tanggal': jurnal.get('tanggal'),
+                'keterangan': jurnal.get('keterangan'),
+                'debit': jurnal.get('jumlah_debit', 0),
+                'kredit': 0,
+                'saldo': new_saldo
+            })
+
+        # Credit side
+        kode_kredit = jurnal.get('kode_akun_kredit')
+        if kode_kredit:
+            if kode_kredit not in buku:
+                buku[kode_kredit] = []
+            prev_saldo = buku[kode_kredit][-1]['saldo'] if buku[kode_kredit] else 0
+            new_saldo = prev_saldo - jurnal.get('jumlah_kredit', 0)
+            buku[kode_kredit].append({
+                'tanggal': jurnal.get('tanggal'),
+                'keterangan': jurnal.get('keterangan'),
+                'debit': 0,
+                'kredit': jurnal.get('jumlah_kredit', 0),
+                'saldo': new_saldo
+            })
+
+    sibal_data.buku_besar = buku
+    print(f"🔁 Regenerated buku besar untuk {len(buku)} akun")
+    return buku
+
+
+def proses_tanggal_komprehensif(tanggal):
+    """Orchestrator untuk memproses alur akuntansi untuk satu tanggal:
+    1) Akumulasi pemasukan → jurnal
+    2) Akumulasi pengeluaran → jurnal
+    3) Simpan data
+    4) Regenerasi kartu persediaan (saldo)
+    5) Regenerasi buku besar pembantu (supplier)
+    6) Regenerasi buku besar utama
+
+    Fungsi ini tidak mengikat ke UI secara langsung — bisa dipanggil oleh developer atau dihubungkan ke callback terpisah.
+    """
+    print(f"🔄 Memproses alur komprehensif untuk tanggal: {tanggal}")
+
+    created = {
+        'pemasukan': [],
+        'pengeluaran': []
+    }
+
+    # 1) Pemasukan
+    try:
+        created['pemasukan'] = akumulasi_pemasukan_ke_jurnal(tanggal)
+    except Exception as e:
+        print(f"❌ Error saat akumulasi pemasukan: {e}")
+
+    # 2) Pengeluaran
+    try:
+        res = akumulasi_pengeluaran_ke_jurnal(tanggal)
+        created['pengeluaran'] = 'done'
+    except Exception as e:
+        print(f"❌ Error saat akumulasi pengeluaran: {e}")
+
+    # 3) Pastikan data tersimpan
+    try:
+        sibal_data.save_all_data()
+    except Exception as e:
+        print(f"❌ Gagal menyimpan data: {e}")
+
+    # 4) Regenerasi kartu persediaan (hitung ulang saldo dari transaksi kartu)
+    try:
+        hitung_ulang_semua_saldo()
+    except Exception as e:
+        print(f"❌ Gagal menghitung ulang kartu persediaan: {e}")
+
+    # 5) Regenerasi buku besar pembantu (supplier)
+    try:
+        refresh_buku_besar_pembantu(None)
+    except Exception as e:
+        print(f"❌ Gagal merefresh buku besar pembantu: {e}")
+
+    # 6) Regenerasi buku besar utama
+    try:
+        regenerate_buku_besar_all()
+    except Exception as e:
+        print(f"❌ Gagal meregenerasi buku besar: {e}")
+
+    print("✅ Selesai proses komprehensif untuk tanggal", tanggal)
+    return created
+
+
 @app.callback(
     Output('tabel-kartu-persediaan', 'children'),
     Input('btn-refresh-persediaan', 'n_clicks')
@@ -4752,6 +5047,79 @@ def update_kartu_persediaan(n_clicks):
 )
 def update_buku_besar(akun):
     if akun:
+        # Jika pilih Ikhtisar Laba Rugi, tampilkan laporan berdasarkan jurnal penutup (jika tersedia)
+        if akun == 'ikhtisar_laba_rugi':
+            try:
+                uid = sibal_data.active_user_id
+                if not uid:
+                    return html.P("Tidak ada user aktif untuk menampilkan Ikhtisar Laba Rugi", style={'color': '#6c757d'})
+
+                # Ambil semua baris jurnal_penutup untuk user ini
+                try:
+                    resp = supabase_client.table('jurnal_penutup').select('*').eq('user_id', uid).execute()
+                    rows = resp.data if getattr(resp, 'data', None) else []
+                except Exception:
+                    rows = []
+
+                if not rows:
+                    return html.P("Belum ada jurnal penutup. Silakan generate jurnal penutup terlebih dahulu.", style={'color': '#6c757d'})
+
+                # Tentukan kode akun Ikhtisar Laba Rugi
+                akun_kode = KODE_AKUN.get('ikhtisar_laba_rugi', {}).get('kode', '')
+
+                # Filter baris yang menyangkut Ikhtisar (baik berada di sisi debit atau kredit)
+                related = []
+                for r in rows:
+                    kode_debet = str(r.get('kode_akun_debit') or '')
+                    kode_kredit = str(r.get('kode_akun_kredit') or '')
+                    nama_debet = str(r.get('akun_debit') or '').strip().lower()
+                    nama_kredit = str(r.get('akun_kredit') or '').strip().lower()
+                    if (akun_kode and kode_debet == akun_kode) or (akun_kode and kode_kredit == akun_kode) or nama_debet == 'ikhtisar laba rugi' or nama_kredit == 'ikhtisar laba rugi':
+                        related.append(r)
+
+                # Urutkan berdasarkan tanggal
+                related.sort(key=lambda x: x.get('tanggal') or '')
+
+                # Bangun baris seperti buku besar: tanggal, keterangan, debit, kredit, saldo berjalan
+                saldo = 0
+                table_rows = []
+                for r in related:
+                    tanggal_r = r.get('tanggal')
+                    keterangan = r.get('keterangan') or ''
+                    jd = float(r.get('jumlah_debit') or 0)
+                    jk = float(r.get('jumlah_kredit') or 0)
+
+                    # Jika Ikhtisar di sisi debit -> increase saldo; jika di sisi kredit -> decrease
+                    is_debit = (str(r.get('akun_debit') or '').strip().lower() == 'ikhtisar laba rugi') or (str(r.get('kode_akun_debit') or '') == akun_kode)
+                    is_kredit = (str(r.get('akun_kredit') or '').strip().lower() == 'ikhtisar laba rugi') or (str(r.get('kode_akun_kredit') or '') == akun_kode)
+
+                    debit_amt = jd if is_debit else 0
+                    kredit_amt = jk if is_kredit else 0
+
+                    # Update saldo: debit increases, kredit decreases
+                    saldo += debit_amt
+                    saldo -= kredit_amt
+
+                    table_rows.append(html.Tr([
+                        html.Td(tanggal_r),
+                        html.Td(keterangan),
+                        html.Td(format_rupiah(debit_amt) if debit_amt > 0 else ''),
+                        html.Td(format_rupiah(kredit_amt) if kredit_amt > 0 else ''),
+                        html.Td(format_rupiah(saldo))
+                    ]))
+
+                if table_rows:
+                    title = f"Buku Besar: Ikhtisar Laba Rugi ({akun_kode})" if akun_kode else "Ikhtisar Laba Rugi"
+                    header = html.Tr([html.Th("Tanggal"), html.Th("Keterangan"), html.Th("Debit"), html.Th("Kredit"), html.Th("Saldo")])
+                    return html.Div([
+                        html.H4(title, style={'marginBottom': '20px'}),
+                        html.Table([header] + table_rows, className='modern-table')
+                    ])
+                else:
+                    return html.P("Belum ada entri jurnal penutup untuk akun Ikhtisar Laba Rugi", style={'color': '#6c757d'})
+            except Exception as e:
+                print(f"❌ Error building ikhtisar ledger from jurnal_penutup: {e}")
+                return html.P("Gagal memuat Ikhtisar Laba Rugi dari jurnal penutup.", style={'color':'#d9534f'})
         # Cari nama akun dari value
         akun_nama = next((item['label'].split(' - ')[1] for item in sibal_data.daftar_akun if item['value'] == akun), akun)
         akun_kode = next((item['label'].split(' - ')[0] for item in sibal_data.daftar_akun if item['value'] == akun), "")
@@ -5551,150 +5919,86 @@ def generate_neraca_setelah_penyesuaian(n_clicks, tanggal):
     prevent_initial_call=True
 )
 def generate_laporan_laba_rugi(n_clicks, tanggal):
+    # Delegate to helper so other UI pieces can reuse the same report rendering
     if n_clicks and n_clicks > 0:
-        # Hitung saldo setiap akun dari jurnal umum + jurnal penyesuaian
-        saldo_akun = {}
-        
-        # Proses semua jurnal
-        semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
-        
-        for jurnal in semua_jurnal:
-            # Akun debit
-            kode_debit = jurnal['kode_akun_debit']
-            if kode_debit not in saldo_akun:
-                saldo_akun[kode_debit] = {
-                    'debit': 0, 
-                    'kredit': 0, 
-                    'nama': jurnal['akun_debit'],
-                    'tipe': 'pendapatan' if kode_debit.startswith('4') else 'beban' if kode_debit.startswith('5') or kode_debit.startswith('6') else 'lainnya'
-                }
-            saldo_akun[kode_debit]['debit'] += jurnal['jumlah_debit']
-            
-            # Akun kredit
-            kode_kredit = jurnal['kode_akun_kredit']
-            if kode_kredit not in saldo_akun:
-                saldo_akun[kode_kredit] = {
-                    'debit': 0, 
-                    'kredit': 0, 
-                    'nama': jurnal['akun_kredit'],
-                    'tipe': 'pendapatan' if kode_kredit.startswith('4') else 'beban' if kode_kredit.startswith('5') or kode_kredit.startswith('6') else 'lainnya'
-                }
-            saldo_akun[kode_kredit]['kredit'] += jurnal['jumlah_kredit']
-        
-        # Kelompokkan pendapatan dan beban
-        pendapatan = {k: v for k, v in saldo_akun.items() if v['tipe'] == 'pendapatan'}
-        beban = {k: v for k, v in saldo_akun.items() if v['tipe'] == 'beban'}
-        
-        # Hitung total pendapatan
-        total_pendapatan = 0
-        rows_pendapatan = []
-        
-        for kode, data in sorted(pendapatan.items()):
-            saldo = data['kredit'] - data['debit']  # Pendapatan di kredit
-            if saldo != 0:
-                total_pendapatan += saldo
-                rows_pendapatan.append(html.Tr([
-                    html.Td(kode),
-                    html.Td(data['nama']),
-                    html.Td(format_rupiah(saldo))
-                ]))
-        
-        # Hitung total beban
-        total_beban = 0
-        rows_beban = []
-        
-        for kode, data in sorted(beban.items()):
-            saldo = data['debit'] - data['kredit']  # Beban di debit
-            if saldo != 0:
-                total_beban += saldo
-                rows_beban.append(html.Tr([
-                    html.Td(kode),
-                    html.Td(data['nama']),
-                    html.Td(format_rupiah(saldo))
-                ]))
-        
-        # Hitung laba/rugi
-        laba_rugi = total_pendapatan - total_beban
-        margin_keuntungan = (laba_rugi / total_pendapatan * 100) if total_pendapatan > 0 else 0
-        
-        return html.Div([
-            html.H4(f"Laporan Laba Rugi per {tanggal}", 
-                   style={'textAlign': 'center', 'marginBottom': '30px', 'color': COLORS['primary']}),
-            
-            # Bagian Pendapatan
-            html.Div([
-                html.H5("PENDAPATAN", style={'color': COLORS['success'], 'marginBottom': '15px'}),
-                html.Table([
-                    html.Tr([html.Th("Kode"), html.Th("Jenis Pendapatan"), html.Th("Jumlah")])
-                ] + rows_pendapatan + [
-                    html.Tr([
-                        html.Td("", colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}),
-                        html.Td(format_rupiah(total_pendapatan), 
-                               style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})
-                    ])
-                ], className="modern-table")
-            ], style={'marginBottom': '30px'}),
-            
-            # Bagian Beban
-            html.Div([
-                html.H5("BEBAN", style={'color': COLORS['error'], 'marginBottom': '15px'}),
-                html.Table([
-                    html.Tr([html.Th("Kode"), html.Th("Jenis Beban"), html.Th("Jumlah")])
-                ] + rows_beban + [
-                    html.Tr([
-                        html.Td("", colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}),
-                        html.Td(format_rupiah(total_beban), 
-                               style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})
-                    ])
-                ], className="modern-table")
-            ], style={'marginBottom': '30px'}),
-            
-            # Hasil Laba/Rugi
-            html.Div([
-                html.H4("HASIL USAHA", style={
-                    'textAlign': 'center', 
-                    'color': COLORS['success'] if laba_rugi >= 0 else COLORS['error'],
-                    'padding': '20px',
-                    'backgroundColor': COLORS['accent_mint'] if laba_rugi >= 0 else COLORS['accent_mint_light'],
-                    'borderRadius': '15px',
-                    'border': f'2px solid {COLORS["success"] if laba_rugi >= 0 else COLORS["error"]}'
-                }),
-                
-                html.Div([
-                    html.Div([
-                        html.P("Total Pendapatan", style={'fontWeight': 'bold'}),
-                        html.P(format_rupiah(total_pendapatan), style={'fontSize': '1.2rem', 'color': COLORS['success']})
-                    ], style={'textAlign': 'center', 'flex': 1}),
-                    
-                    html.Div([
-                        html.P("➖", style={'fontSize': '2rem', 'margin': '0 20px'})
-                    ], style={'display': 'flex', 'alignItems': 'center'}),
-                    
-                    html.Div([
-                        html.P("Total Beban", style={'fontWeight': 'bold'}),
-                        html.P(format_rupiah(total_beban), style={'fontSize': '1.2rem', 'color': COLORS['error']})
-                    ], style={'textAlign': 'center', 'flex': 1}),
-                    
-                    html.Div([
-                        html.P("🟰", style={'fontSize': '2rem', 'margin': '0 20px'})
-                    ], style={'display': 'flex', 'alignItems': 'center'}),
-                    
-                    html.Div([
-                        html.P("Laba (Rugi) Bersih", style={'fontWeight': 'bold'}),
-                        html.P(format_rupiah(abs(laba_rugi)), 
-                              style={'fontSize': '1.5rem', 'fontWeight': 'bold', 
-                                    'color': COLORS['success'] if laba_rugi >= 0 else COLORS['error']})
-                    ], style={'textAlign': 'center', 'flex': 1})
-                ], style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center', 'marginTop': '20px'}),
-                
-                html.Div([
-                    html.P(f"Margin Keuntungan: {margin_keuntungan:.1f}%", 
-                          style={'textAlign': 'center', 'fontSize': '1.1rem', 'color': COLORS['gray_600']})
-                ], style={'marginTop': '15px'})
-            ])
-        ])
-    
+        return build_laporan_laba_rugi(tanggal)
     return html.P("Klik 'Generate Laporan Laba Rugi' untuk melihat laporan", style={'color': '#6c757d'})
+
+
+def build_laporan_laba_rugi(tanggal):
+    # Hitung saldo setiap akun dari jurnal umum + jurnal penyesuaian
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal['kode_akun_debit']
+        if kode_debit not in saldo_akun:
+            saldo_akun[kode_debit] = {
+                'debit': 0,
+                'kredit': 0,
+                'nama': jurnal.get('akun_debit', kode_debit),
+                'tipe': 'pendapatan' if kode_debit.startswith('4') else 'beban' if kode_debit.startswith('5') or kode_debit.startswith('6') else 'lainnya'
+            }
+        saldo_akun[kode_debit]['debit'] += jurnal.get('jumlah_debit', 0)
+
+        kode_kredit = jurnal['kode_akun_kredit']
+        if kode_kredit not in saldo_akun:
+            saldo_akun[kode_kredit] = {
+                'debit': 0,
+                'kredit': 0,
+                'nama': jurnal.get('akun_kredit', kode_kredit),
+                'tipe': 'pendapatan' if kode_kredit.startswith('4') else 'beban' if kode_kredit.startswith('5') or kode_kredit.startswith('6') else 'lainnya'
+            }
+        saldo_akun[kode_kredit]['kredit'] += jurnal.get('jumlah_kredit', 0)
+
+    pendapatan = {k: v for k, v in saldo_akun.items() if v['tipe'] == 'pendapatan'}
+    beban = {k: v for k, v in saldo_akun.items() if v['tipe'] == 'beban'}
+
+    total_pendapatan = 0
+    rows_pendapatan = []
+    for kode, data in sorted(pendapatan.items()):
+        saldo = data['kredit'] - data['debit']
+        if saldo != 0:
+            total_pendapatan += saldo
+            rows_pendapatan.append(html.Tr([html.Td(kode), html.Td(data['nama']), html.Td(format_rupiah(saldo))]))
+
+    total_beban = 0
+    rows_beban = []
+    for kode, data in sorted(beban.items()):
+        saldo = data['debit'] - data['kredit']
+        if saldo != 0:
+            total_beban += saldo
+            rows_beban.append(html.Tr([html.Td(kode), html.Td(data['nama']), html.Td(format_rupiah(saldo))]))
+
+    laba_rugi = total_pendapatan - total_beban
+    margin_keuntungan = (laba_rugi / total_pendapatan * 100) if total_pendapatan > 0 else 0
+
+    return html.Div([
+        html.H4(f"Laporan Laba Rugi per {tanggal}", style={'textAlign': 'center', 'marginBottom': '30px', 'color': COLORS['primary']}),
+        html.Div([
+            html.H5("PENDAPATAN", style={'color': COLORS['success'], 'marginBottom': '15px'}),
+            html.Table([html.Tr([html.Th("Kode"), html.Th("Jenis Pendapatan"), html.Th("Jumlah")])] + rows_pendapatan + [
+                html.Tr([html.Td("", colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_pendapatan), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})])
+            ], className="modern-table")
+        ], style={'marginBottom': '30px'}),
+        html.Div([
+            html.H5("BEBAN", style={'color': COLORS['error'], 'marginBottom': '15px'}),
+            html.Table([html.Tr([html.Th("Kode"), html.Th("Jenis Beban"), html.Th("Jumlah")])] + rows_beban + [
+                html.Tr([html.Td("", colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_beban), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})])
+            ], className="modern-table")
+        ], style={'marginBottom': '30px'}),
+        html.Div([
+            html.H4("HASIL USAHA", style={'textAlign': 'center', 'color': COLORS['success'] if laba_rugi >= 0 else COLORS['error'], 'padding': '20px', 'backgroundColor': COLORS['accent_mint'] if laba_rugi >= 0 else COLORS['accent_mint_light'], 'borderRadius': '15px', 'border': f'2px solid {COLORS["success"] if laba_rugi >= 0 else COLORS["error"]}'}),
+            html.Div([
+                html.Div([html.P("Total Pendapatan", style={'fontWeight': 'bold'}), html.P(format_rupiah(total_pendapatan), style={'fontSize': '1.2rem', 'color': COLORS['success']})], style={'textAlign': 'center', 'flex': 1}),
+                html.Div([html.P("➖", style={'fontSize': '2rem', 'margin': '0 20px'})], style={'display': 'flex', 'alignItems': 'center'}),
+                html.Div([html.P("Total Beban", style={'fontWeight': 'bold'}), html.P(format_rupiah(total_beban), style={'fontSize': '1.2rem', 'color': COLORS['error']})], style={'textAlign': 'center', 'flex': 1}),
+                html.Div([html.P("🟰", style={'fontSize': '2rem', 'margin': '0 20px'})], style={'display': 'flex', 'alignItems': 'center'}),
+                html.Div([html.P("Laba (Rugi) Bersih", style={'fontWeight': 'bold'}), html.P(format_rupiah(abs(laba_rugi)), style={'fontSize': '1.5rem', 'fontWeight': 'bold', 'color': COLORS['success'] if laba_rugi >= 0 else COLORS['error']})], style={'textAlign': 'center', 'flex': 1})
+            ], style={'display': 'flex', 'justifyContent': 'center', 'alignItems': 'center', 'marginTop': '20px'}),
+            html.Div([html.P(f"Margin Keuntungan: {margin_keuntungan:.1f}%", style={'textAlign': 'center', 'fontSize': '1.1rem', 'color': COLORS['gray_600']})], style={'marginTop': '15px'})
+        ])
+    ])
 
 def neraca_lajur_layout():
     return html.Div([
@@ -5975,6 +6279,573 @@ def calculate_saldo_akun_periode(jurnal_data, start_date, end_date):
         saldo_akun[akun_kredit] -= jurnal['jumlah_kredit']
     
     return saldo_akun
+
+
+@app.callback(
+    Output('tabel-jurnal-penutup', 'children'),
+    Input('btn-generate-jurnal-penutup', 'n_clicks'),
+    State('tanggal-jurnal-penutup', 'date'),
+    prevent_initial_call=True
+)
+def generate_jurnal_penutup(n_clicks, tanggal):
+    if not (n_clicks and n_clicks > 0):
+        return html.P("Klik 'Generate Jurnal Penutup' untuk membuat jurnal penutup", style={'color': '#6c757d'})
+
+    # Hitung saldo akun dari jurnal umum + jurnal penyesuaian
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal['kode_akun_debit']
+        if kode_debit not in saldo_akun:
+            saldo_akun[kode_debit] = {'debit': 0, 'kredit': 0, 'nama': jurnal['akun_debit']}
+        saldo_akun[kode_debit]['debit'] += jurnal['jumlah_debit']
+
+        kode_kredit = jurnal['kode_akun_kredit']
+        if kode_kredit not in saldo_akun:
+            saldo_akun[kode_kredit] = {'debit': 0, 'kredit': 0, 'nama': jurnal['akun_kredit']}
+        saldo_akun[kode_kredit]['kredit'] += jurnal['jumlah_kredit']
+
+    # Identifikasi akun nominal (pendapatan & beban)
+    jurnal_penutup_entries = []
+    total_pendapatan = 0
+    total_beban = 0
+
+    for kode, data in sorted(saldo_akun.items()):
+        tipe = ('pendapatan' if kode.startswith('4') else 'beban' if kode.startswith('5') or kode.startswith('6') else None)
+        saldo = (data['kredit'] - data['debit']) if tipe == 'pendapatan' else (data['debit'] - data['kredit']) if tipe == 'beban' else 0
+        if tipe == 'pendapatan' and saldo != 0:
+            # Tutup pendapatan: Debit akun pendapatan, Kredit Ikhtisar Laba Rugi
+            jurnal_penutup_entries.append({
+                'tanggal': tanggal,
+                'keterangan': f"Penutupan akun pendapatan {data['nama']}",
+                'akun_debit': data['nama'],
+                'debit': saldo,
+                'akun_kredit': 'Ikhtisar Laba Rugi',
+                'kredit': saldo
+            })
+            total_pendapatan += saldo
+        elif tipe == 'beban' and saldo != 0:
+            # Tutup beban: Debit Ikhtisar Laba Rugi, Kredit akun beban
+            jurnal_penutup_entries.append({
+                'tanggal': tanggal,
+                'keterangan': f"Penutupan akun beban {data['nama']}",
+                'akun_debit': 'Ikhtisar Laba Rugi',
+                'debit': saldo,
+                'akun_kredit': data['nama'],
+                'kredit': saldo
+            })
+            total_beban += saldo
+
+    laba_rugi = total_pendapatan - total_beban
+    # Tutup Ikhtisar Laba Rugi ke Modal
+    if laba_rugi != 0:
+        if laba_rugi > 0:
+            # Laba: Debit Ikhtisar, Kredit Modal
+            jurnal_penutup_entries.append({
+                'tanggal': tanggal,
+                'keterangan': 'Penutupan Ikhtisar Laba Rugi (Laba)',
+                'akun_debit': 'Ikhtisar Laba Rugi',
+                'debit': laba_rugi,
+                'akun_kredit': KODE_AKUN['modal']['nama'],
+                'kredit': laba_rugi
+            })
+        else:
+            # Rugi: Debit Modal, Kredit Ikhtisar
+            jurnal_penutup_entries.append({
+                'tanggal': tanggal,
+                'keterangan': 'Penutupan Ikhtisar Laba Rugi (Rugi)',
+                'akun_debit': KODE_AKUN['modal']['nama'],
+                'debit': abs(laba_rugi),
+                'akun_kredit': 'Ikhtisar Laba Rugi',
+                'kredit': abs(laba_rugi)
+            })
+
+    # Render tabel jurnal penutup (format: Tanggal | Keterangan | Debit | Kredit)
+    if jurnal_penutup_entries:
+        header = html.Tr([html.Th('Tanggal'), html.Th('Keterangan'), html.Th('Debit'), html.Th('Kredit')])
+        rows = []
+        total_debit = 0.0
+        total_kredit = 0.0
+        # visual styles for table cells
+        date_style = {'fontWeight': '700'}
+        account_link_style = {'color': '#3b82f6', 'textDecoration': 'none'}
+        amount_style = {'textAlign': 'right', 'whiteSpace': 'nowrap'}
+        counterpart_style = {'paddingLeft': '0px', 'color': '#6c757d'}
+
+        for j in jurnal_penutup_entries:
+            # ensure numeric
+            try:
+                debit_val = float(j.get('debit') or 0)
+            except Exception:
+                debit_val = 0.0
+            try:
+                kredit_val = float(j.get('kredit') or 0)
+            except Exception:
+                kredit_val = 0.0
+
+            total_debit += debit_val
+            total_kredit += kredit_val
+
+            # Render as two aligned account rows and skip the verbose "Penutupan akun..." keterangan row
+            # First row: Tanggal | akun_debit | Debit | (empty Kredit)
+            rows.append(html.Tr([
+                html.Td(j.get('tanggal'), style=date_style),
+                html.Td(html.Span(j.get('akun_debit') or '', style=counterpart_style)),
+                html.Td(format_rupiah(debit_val) if debit_val else '', style=amount_style),
+                html.Td('', style=amount_style)
+            ]))
+
+            # Second row: empty date | akun_kredit | (empty Debit) | Kredit
+            rows.append(html.Tr([
+                html.Td('', style={'border':'none'}),
+                html.Td(html.Span(j.get('akun_kredit') or '', style=counterpart_style)),
+                html.Td('', style=amount_style),
+                html.Td(format_rupiah(kredit_val) if kredit_val else '', style=amount_style)
+            ]))
+
+        # Also persist jurnal penutup entries to Supabase table 'jurnal_penutup' (delete existing for same tanggal+user)
+        insert_count = 0
+        insert_errors = []
+        try:
+            if sibal_data and getattr(sibal_data, 'active_user_id', None) is not None:
+                try:
+                    supabase_client.table('jurnal_penutup').delete().eq('tanggal', str(tanggal)).eq('user_id', sibal_data.active_user_id).execute()
+                except Exception:
+                    # ignore delete errors but continue to attempt inserts
+                    pass
+
+            # Build name -> code map from existing data to supply kode_akun_* fields
+            code_map = {}
+            try:
+                all_journals = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+                for jj in all_journals:
+                    name_debit = jj.get('akun_debit')
+                    code_debit = jj.get('kode_akun_debit')
+                    if name_debit and code_debit:
+                        code_map.setdefault(name_debit, code_debit)
+                    name_kredit = jj.get('akun_kredit')
+                    code_kredit = jj.get('kode_akun_kredit')
+                    if name_kredit and code_kredit:
+                        code_map.setdefault(name_kredit, code_kredit)
+            except Exception:
+                pass
+
+            for j in jurnal_penutup_entries:
+                akun_debet_name = j.get('akun_debit','')
+                akun_kredit_name = j.get('akun_kredit','')
+                kode_debet = code_map.get(akun_debet_name)
+                kode_kredit = code_map.get(akun_kredit_name)
+                # try known KODE_AKUN mapping for modal or ikhtisar if available
+                try:
+                    if not kode_debet and akun_debet_name and 'modal' in globals() or 'KODE_AKUN' in globals():
+                        kode_debet = KODE_AKUN.get(akun_debet_name, {}).get('kode') if isinstance(KODE_AKUN, dict) else None
+                except Exception:
+                    pass
+
+                try:
+                    if not kode_kredit and akun_kredit_name and 'KODE_AKUN' in globals():
+                        kode_kredit = KODE_AKUN.get(akun_kredit_name, {}).get('kode') if isinstance(KODE_AKUN, dict) else None
+                except Exception:
+                    pass
+
+                # fallback to using the account name as code (to satisfy NOT NULL constraints)
+                if not kode_debet:
+                    kode_debet = str(akun_debet_name)
+                if not kode_kredit:
+                    kode_kredit = str(akun_kredit_name)
+
+                payload = {
+                    'tanggal': str(j.get('tanggal')),
+                    'keterangan': j.get('keterangan',''),
+                    'akun_debit': akun_debet_name,
+                    'kode_akun_debit': kode_debet,
+                    'jumlah_debit': float(j.get('debit',0) or 0),
+                    'akun_kredit': akun_kredit_name,
+                    'kode_akun_kredit': kode_kredit,
+                    'jumlah_kredit': float(j.get('kredit',0) or 0),
+                    'user_id': sibal_data.active_user_id
+                }
+                try:
+                    resp = supabase_client.table('jurnal_penutup').insert(payload).execute()
+                    if getattr(resp, 'status_code', 0) in (200,201) or getattr(resp, 'data', None):
+                        insert_count += 1
+                    else:
+                        insert_errors.append(str(payload.get('akun_debit')))
+                except Exception as e:
+                    insert_errors.append(f"{payload.get('akun_debit')}:{e}")
+        except Exception:
+            insert_errors.append('unknown')
+
+        status_el = None
+        if insert_count > 0:
+            status_msg = f"✅ Tersimpan {insert_count} baris jurnal penutup ke tabel 'jurnal_penutup'"
+            if insert_errors:
+                status_msg += f" — gagal: {', '.join(insert_errors)}"
+            status_el = html.Div(status_msg, style={'color': COLORS['success'], 'marginTop': '10px'})
+        elif insert_errors:
+            status_el = html.Div(f"⚠️ Gagal menyimpan jurnal penutup: {', '.join(insert_errors)}", style={'color': COLORS['warning'], 'marginTop': '10px'})
+
+        # tambahkan baris total di bawah tabel
+        rows.append(html.Tr([html.Td('', colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #ddd'}), html.Td(format_rupiah(total_debit), style={'fontWeight': 'bold', 'borderTop': '2px solid #ddd'}), html.Td(format_rupiah(total_kredit), style={'fontWeight': 'bold', 'borderTop': '2px solid #ddd'})]))
+
+        content = [html.Table([header] + rows, className='modern-table')]
+        if status_el:
+            content.append(status_el)
+        return html.Div(content)
+
+    return html.P('Tidak ada akun nominal yang perlu ditutup', style={'color': '#6c757d'})
+
+
+@app.callback(
+    Output('tabel-neraca-penutupan', 'children'),
+    Input('btn-generate-neraca-penutupan', 'n_clicks'),
+    State('tanggal-neraca-penutupan', 'date'),
+    prevent_initial_call=True
+)
+def generate_neraca_setelah_penutupan(n_clicks, tanggal):
+    if not (n_clicks and n_clicks > 0):
+        return html.P("Klik 'Generate Neraca Setelah Penutupan' untuk melihat neraca", style={'color': '#6c757d'})
+    # Ambil saldo dari jurnal umum + penyesuaian
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal.get('kode_akun_debit')
+        kode_kredit = jurnal.get('kode_akun_kredit')
+
+        if kode_debit:
+            if kode_debit not in saldo_akun:
+                saldo_akun[kode_debit] = {'debit': 0.0, 'kredit': 0.0, 'nama': jurnal.get('akun_debit','')}
+            saldo_akun[kode_debit]['debit'] += float(jurnal.get('jumlah_debit', 0) or 0)
+
+        if kode_kredit:
+            if kode_kredit not in saldo_akun:
+                saldo_akun[kode_kredit] = {'debit': 0.0, 'kredit': 0.0, 'nama': jurnal.get('akun_kredit','')}
+            saldo_akun[kode_kredit]['kredit'] += float(jurnal.get('jumlah_kredit', 0) or 0)
+
+    # Hitung laba rugi dari akun pendapatan/beban
+    pendapatan = {k: v for k, v in saldo_akun.items() if str(k).startswith('4')}
+    beban = {k: v for k, v in saldo_akun.items() if str(k).startswith('5') or str(k).startswith('6')}
+    total_pendapatan = sum((v['kredit'] - v['debit']) for v in pendapatan.values())
+    total_beban = sum((v['debit'] - v['kredit']) for v in beban.values())
+    laba_rugi = total_pendapatan - total_beban
+
+    # Siapkan baris neraca setelah penutupan dalam format Debit/Kredit
+    rows = []
+    total_debit = 0.0
+    total_kredit = 0.0
+
+    # Masukkan semua akun non-nominal (exclude pendapatan & beban)
+    for kode, data in sorted(saldo_akun.items()):
+        kode_str = str(kode)
+        tipe = 'aktiva' if kode_str.startswith('1') else 'pasiva' if kode_str.startswith('2') else 'modal' if kode_str.startswith('3') else 'pendapatan' if kode_str.startswith('4') else 'beban' if kode_str.startswith('5') or kode_str.startswith('6') else 'lainnya'
+        if tipe in ('pendapatan', 'beban'):
+            continue
+
+        # aktiva shown as debit = debit - kredit ; pasiva/modal shown as kredit = kredit - debit
+        debit_amt = 0.0
+        kredit_amt = 0.0
+        if tipe == 'aktiva':
+            saldo = data['debit'] - data['kredit']
+            if abs(saldo) < 0.01:
+                continue
+            debit_amt = round(saldo,2) if saldo > 0 else 0.0
+            kredit_amt = round(abs(saldo),2) if saldo < 0 else 0.0
+        else:
+            saldo = data['kredit'] - data['debit']
+            if abs(saldo) < 0.01:
+                continue
+            kredit_amt = round(saldo,2) if saldo > 0 else 0.0
+            debit_amt = round(abs(saldo),2) if saldo < 0 else 0.0
+
+        rows.append(html.Tr([html.Td(kode), html.Td(data.get('nama','')), html.Td(format_rupiah(debit_amt) if debit_amt else ''), html.Td(format_rupiah(kredit_amt) if kredit_amt else '')]))
+        total_debit += debit_amt
+        total_kredit += kredit_amt
+
+    # Tambahkan laba/rugi ke modal (jika ada)
+    if abs(laba_rugi) >= 0.01:
+        # find modal kode if available
+        modal_kode = KODE_AKUN.get('modal', {}).get('kode')
+        modal_nama = KODE_AKUN.get('modal', {}).get('nama')
+        if modal_kode:
+            # laba (positif) increases modal kredit, rugi increases debit
+            if laba_rugi > 0:
+                rows.append(html.Tr([html.Td(modal_kode), html.Td(modal_nama or 'Modal'), html.Td(''), html.Td(format_rupiah(round(laba_rugi,2)))]))
+                total_kredit += round(laba_rugi,2)
+            else:
+                rows.append(html.Tr([html.Td(modal_kode), html.Td(modal_nama or 'Modal'), html.Td(format_rupiah(round(abs(laba_rugi),2))), html.Td('')]))
+                total_debit += round(abs(laba_rugi),2)
+
+    header = html.Tr([html.Th('Kode'), html.Th('Nama Akun'), html.Th('Debit'), html.Th('Kredit')])
+    if rows:
+        rows.append(html.Tr([html.Td('', colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_debit), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_kredit), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})]))
+        balans = abs(total_debit - total_kredit) < 0.01
+        status = html.P('✅ Neraca Setelah Penutupan Seimbang' if balans else '❌ Neraca Setelah Penutupan Tidak Seimbang', style={'textAlign': 'center', 'fontWeight': 'bold', 'color': COLORS['success'] if balans else COLORS['error']})
+        return html.Div([html.H4(f'Neraca Setelah Penutupan per {tanggal}', style={'textAlign': 'center', 'marginBottom': '20px', 'color': COLORS['primary']}), html.Table([header] + rows, className='modern-table', style={'width': '100%'}), status])
+
+    return html.P('Tidak ada akun non-nominal untuk ditampilkan setelah penutupan', style={'color': '#6c757d'})
+
+
+@app.callback(
+    Output('save-neraca-penutupan-status', 'children'),
+    Input('btn-save-neraca-penutupan', 'n_clicks'),
+    State('tanggal-neraca-penutupan', 'date'),
+    prevent_initial_call=True
+)
+def save_neraca_setelah_penutupan(n_clicks, tanggal):
+    if not (n_clicks and n_clicks > 0):
+        return ''
+
+    # Recompute balances (same logic as generate_neraca_setelah_penutupan)
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal['kode_akun_debit']
+        if kode_debit not in saldo_akun:
+            saldo_akun[kode_debit] = {'debit': 0.0, 'kredit': 0.0, 'nama': jurnal['akun_debit']}
+        saldo_akun[kode_debit]['debit'] += float(jurnal.get('jumlah_debit', 0) or 0)
+
+        kode_kredit = jurnal['kode_akun_kredit']
+        if kode_kredit not in saldo_akun:
+            saldo_akun[kode_kredit] = {'debit': 0.0, 'kredit': 0.0, 'nama': jurnal['akun_kredit']}
+        saldo_akun[kode_kredit]['kredit'] += float(jurnal.get('jumlah_kredit', 0) or 0)
+
+    # Compute laba/rugi
+    pendapatan = {k: v for k, v in saldo_akun.items() if str(k).startswith('4')}
+    beban = {k: v for k, v in saldo_akun.items() if str(k).startswith('5') or str(k).startswith('6')}
+    total_pendapatan = sum((v['kredit'] - v['debit']) for v in pendapatan.values())
+    total_beban = sum((v['debit'] - v['kredit']) for v in beban.values())
+    laba_rugi = total_pendapatan - total_beban
+
+    # Build adjusted balances (exclude nominal accounts)
+    rows_to_save = []
+    total_aktiva = 0.0
+    total_pasiva_modal = 0.0
+
+    for kode, data in sorted(saldo_akun.items()):
+        kode_str = str(kode)
+        tipe = 'aktiva' if kode_str.startswith('1') else 'pasiva' if kode_str.startswith('2') else 'modal' if kode_str.startswith('3') else 'pendapatan' if kode_str.startswith('4') else 'beban' if kode_str.startswith('5') or kode_str.startswith('6') else 'lainnya'
+        if tipe in ('pendapatan', 'beban'):
+            continue
+
+        if tipe == 'aktiva':
+            saldo = data['debit'] - data['kredit']
+            if abs(saldo) < 0.01:
+                continue
+            # aktiva -> saldo_debit
+            rows_to_save.append({'kode_akun': kode, 'nama_akun': data.get('nama',''), 'saldo_debit': round(saldo,2), 'saldo_kredit': 0.0, 'jenis_akun': tipe})
+            total_aktiva += saldo
+        else:
+            # pasiva or modal -> saldo_kredit
+            saldo = data['kredit'] - data['debit']
+            if abs(saldo) < 0.01:
+                continue
+            rows_to_save.append({'kode_akun': kode, 'nama_akun': data.get('nama',''), 'saldo_debit': 0.0, 'saldo_kredit': round(saldo,2), 'jenis_akun': tipe})
+            total_pasiva_modal += saldo
+
+    # Add laba_rugi to modal account
+    if abs(laba_rugi) >= 0.01:
+        modal_kode = KODE_AKUN.get('modal', {}).get('kode')
+        modal_nama = KODE_AKUN.get('modal', {}).get('nama')
+        if modal_kode:
+            # find existing modal row
+            found = next((r for r in rows_to_save if r['kode_akun'] == modal_kode), None)
+            if found:
+                if laba_rugi > 0:
+                    found['saldo_kredit'] = round(found.get('saldo_kredit',0) + laba_rugi,2)
+                else:
+                    found['saldo_debit'] = round(found.get('saldo_debit',0) + abs(laba_rugi),2)
+            else:
+                if laba_rugi > 0:
+                    rows_to_save.append({'kode_akun': modal_kode, 'nama_akun': modal_nama or '', 'saldo_debit': 0.0, 'saldo_kredit': round(laba_rugi,2), 'jenis_akun': 'modal'})
+                else:
+                    rows_to_save.append({'kode_akun': modal_kode, 'nama_akun': modal_nama or '', 'saldo_debit': round(abs(laba_rugi),2), 'saldo_kredit': 0.0, 'jenis_akun': 'modal'})
+
+    # Prepare payloads in same format as neraca_setelah_penyesuaian
+    payloads = []
+    for r in rows_to_save:
+        payloads.append({
+            'tanggal': str(tanggal) if tanggal is not None else None,
+            'kode_akun': str(r['kode_akun']),
+            'nama_akun': r.get('nama_akun',''),
+            'saldo_debit': float(r.get('saldo_debit',0) or 0),
+            'saldo_kredit': float(r.get('saldo_kredit',0) or 0),
+            'jenis_akun': r.get('jenis_akun',''),
+            'keterangan': f'Neraca setelah penutupan per {tanggal}',
+            'user_id': sibal_data.active_user_id
+        })
+
+    if not payloads:
+        return html.Div([html.Span('Tidak ada baris disimpan (saldo kosong atau error).', style={'color': COLORS['warning']})])
+
+    # Optional: delete existing rows for same tanggal + user to avoid duplicates
+    try:
+        if sibal_data and getattr(sibal_data, 'active_user_id', None) is not None:
+            del_resp = supabase_client.table('neraca_setelah_penutup').delete().eq('tanggal', str(tanggal)).eq('user_id', sibal_data.active_user_id).execute()
+        else:
+            del_resp = None
+    except Exception as e:
+        # proceed but capture warning
+        del_resp = {'error': str(e)}
+
+    # Insert payloads in batch (use supabase client directly to get feedback)
+    inserted = 0
+    errors = []
+    for p in payloads:
+        try:
+            resp = supabase_client.table('neraca_setelah_penutup').insert(p).execute()
+            # supabase-python returns object with .status_code or .data
+            if getattr(resp, 'status_code', 0) in (200, 201) or getattr(resp, 'data', None):
+                inserted += 1
+            else:
+                errors.append(str(p.get('kode_akun')))
+        except Exception as e:
+            errors.append(f"{p.get('kode_akun')}:{e}")
+
+    if inserted == 0:
+        err_msg = 'Tidak ada baris disimpan (saldo kosong atau error).'
+        if errors:
+            err_msg += ' Error: ' + '; '.join(errors)
+        return html.Div([html.Span(err_msg, style={'color': COLORS['warning']})])
+
+    msg = f"✅ Disimpan {inserted} baris ke tabel 'neraca_setelah_penutup'"
+    if errors:
+        msg += f" — gagal menyimpan kode: {', '.join(errors)}"
+
+    return html.Div([html.Span(msg, style={'color': COLORS['success']} )])
+
+
+@app.callback(
+    Output('tabel-neraca-saldo-penyesuaian', 'children'),
+    Input('btn-generate-neraca-saldo-penyesuaian', 'n_clicks'),
+    State('tanggal-neraca-saldo-penyesuaian', 'date'),
+    prevent_initial_call=True
+)
+def generate_neraca_saldo_penyesuaian(n_clicks, tanggal):
+    if not (n_clicks and n_clicks > 0):
+        return html.P("Klik 'Generate Neraca Saldo Setelah Penyesuaian' untuk melihat neraca saldo", style={'color': '#6c757d'})
+
+    # Kumpulkan saldo dari jurnal umum + penyesuaian
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal['kode_akun_debit']
+        if kode_debit not in saldo_akun:
+            saldo_akun[kode_debit] = {'debit': 0, 'kredit': 0, 'nama': jurnal['akun_debit']}
+        saldo_akun[kode_debit]['debit'] += jurnal['jumlah_debit']
+
+        kode_kredit = jurnal['kode_akun_kredit']
+        if kode_kredit not in saldo_akun:
+            saldo_akun[kode_kredit] = {'debit': 0, 'kredit': 0, 'nama': jurnal['akun_kredit']}
+        saldo_akun[kode_kredit]['kredit'] += jurnal['jumlah_kredit']
+
+    # Buat baris neraca saldo: tampilkan debit atau kredit sesuai saldo
+    rows = []
+    total_debit = 0
+    total_kredit = 0
+
+    for kode, data in sorted(saldo_akun.items()):
+        saldo = data['debit'] - data['kredit']
+        if saldo > 0:
+            debit_amt = saldo
+            kredit_amt = 0
+        elif saldo < 0:
+            debit_amt = 0
+            kredit_amt = abs(saldo)
+        else:
+            debit_amt = 0
+            kredit_amt = 0
+
+        if debit_amt != 0 or kredit_amt != 0:
+            rows.append(html.Tr([html.Td(kode), html.Td(data['nama']), html.Td(format_rupiah(debit_amt) if debit_amt else ''), html.Td(format_rupiah(kredit_amt) if kredit_amt else '')]))
+            total_debit += debit_amt
+            total_kredit += kredit_amt
+
+    header = html.Tr([html.Th('Kode'), html.Th('Nama Akun'), html.Th('Debit'), html.Th('Kredit')])
+    # Tambahkan baris total
+    if rows:
+        rows.append(html.Tr([html.Td('', colSpan=2, style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_debit), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'}), html.Td(format_rupiah(total_kredit), style={'fontWeight': 'bold', 'borderTop': '2px solid #000'})]))
+        balans = abs(total_debit - total_kredit) < 0.01
+        status = html.P('✅ Neraca Saldo Seimbang' if balans else '❌ Neraca Saldo Tidak Seimbang', style={'textAlign': 'center', 'fontWeight': 'bold', 'color': COLORS['success'] if balans else COLORS['error']})
+        return html.Div([html.H4(f'Neraca Saldo Setelah Penyesuaian per {tanggal}', style={'textAlign': 'center', 'marginBottom': '20px', 'color': COLORS['primary']}), html.Table([header] + rows, className='modern-table', style={'width': '100%'}), status])
+
+    return html.P('Tidak ada saldo akun untuk ditampilkan', style={'color': '#6c757d'})
+
+
+@app.callback(
+    Output('save-neraca-saldo-penyesuaian-status', 'children'),
+    Input('btn-save-neraca-saldo-penyesuaian', 'n_clicks'),
+    State('tanggal-neraca-saldo-penyesuaian', 'date'),
+    prevent_initial_call=True
+)
+def save_neraca_saldo_penyesuaian(n_clicks, tanggal):
+    if not (n_clicks and n_clicks > 0):
+        return ''
+
+    # Recompute saldo per akun (gabungkan jurnal umum + penyesuaian)
+    saldo_akun = {}
+    semua_jurnal = sibal_data.jurnal_umum + sibal_data.jurnal_penyesuaian
+    for jurnal in semua_jurnal:
+        kode_debit = jurnal.get('kode_akun_debit')
+        kode_kredit = jurnal.get('kode_akun_kredit')
+
+        if kode_debit:
+            if kode_debit not in saldo_akun:
+                saldo_akun[kode_debit] = {'kode': kode_debit, 'nama': jurnal.get('akun_debit'), 'debit': 0.0, 'kredit': 0.0}
+            saldo_akun[kode_debit]['debit'] += float(jurnal.get('jumlah_debit', 0) or 0)
+
+        if kode_kredit:
+            if kode_kredit not in saldo_akun:
+                saldo_akun[kode_kredit] = {'kode': kode_kredit, 'nama': jurnal.get('akun_kredit'), 'debit': 0.0, 'kredit': 0.0}
+            saldo_akun[kode_kredit]['kredit'] += float(jurnal.get('jumlah_kredit', 0) or 0)
+
+    # Prepare and insert rows into Supabase table 'neraca_setelah_penyesuaian'
+    inserted = 0
+    errors = []
+    for kode, data in sorted(saldo_akun.items()):
+        debit_amt = data['debit'] - 0
+        kredit_amt = data['kredit'] - 0
+
+        # skip zero balances
+        if abs(debit_amt) < 0.01 and abs(kredit_amt) < 0.01:
+            continue
+
+        # Compute final balance: if debit > credit => saldo_debit = debit-credit; else saldo_kredit = credit-debit
+        if debit_amt >= kredit_amt:
+            saldo_debit = round(debit_amt - kredit_amt, 2)
+            saldo_kredit = 0.0
+        else:
+            saldo_debit = 0.0
+            saldo_kredit = round(kredit_amt - debit_amt, 2)
+
+        # Determine jenis akun from kode (best-effort)
+        kode_str = str(kode)
+        jenis = 'aktiva' if kode_str.startswith('1') else 'pasiva' if kode_str.startswith('2') else 'modal' if kode_str.startswith('3') else 'pendapatan' if kode_str.startswith('4') else 'beban' if kode_str.startswith('5') or kode_str.startswith('6') else 'lainnya'
+
+        payload = {
+            'tanggal': tanggal,
+            'kode_akun': kode,
+            'nama_akun': data.get('nama') or '',
+            'saldo_debit': float(saldo_debit),
+            'saldo_kredit': float(saldo_kredit),
+            'jenis_akun': jenis,
+            'keterangan': f'Neraca saldo setelah penyesuaian per {tanggal}',
+            'user_id': sibal_data.active_user_id
+        }
+
+        saved = sibal_data._insert_table_data('neraca_setelah_penyesuaian', payload)
+        if saved:
+            inserted += 1
+        else:
+            errors.append(str(kode))
+
+    if inserted == 0:
+        return html.Div([html.Span('Tidak ada baris disimpan (saldo kosong atau error).', style={'color': COLORS['warning']})])
+
+    msg = f"✅ Disimpan {inserted} baris ke tabel 'neraca_setelah_penyesuaian'"
+    if errors:
+        msg += f" — gagal menyimpan kode: {', '.join(errors)}"
+
+    return html.Div([html.Span(msg, style={'color': COLORS['success']} )])
 
 def format_currency(amount):
     """Format currency dengan pemisah ribuan"""
